@@ -1,0 +1,56 @@
+#  this will take care of making mysql image docker and making a container of all of them
+#  as all can works in just one runnig.
+version: "3.4"
+# common-variables
+x-common-variables: &common-variables
+  MYSQL_USER: root
+  MYSQL_ROOT_PASSWORD: password
+  MYSQL_DATABASE: art
+  REACT_APP_SERVER_PORT: 2357
+
+# defining the services that the container should contain
+services:
+  # mysql --> working with data
+  mysql:
+    image: mysql
+    command: "--default-authentication-plugin=mysql_native_password"
+    environment:
+      <<: *common-variables
+    ports:
+      - "3308:3306"
+    restart: unless-stopped
+    # define the volume for data in container.
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d
+  # server --> to have the server side in container
+  server:
+    build: ./server
+    depends_on:
+      - mysql
+    expose:
+      - 2357
+    environment:
+      <<: *common-variables
+      MYSQL_HOST_IP: mysql
+    ports:
+      - "2357:2357"
+    volumes:
+      - ./server:/app
+    links:
+      - mysql
+    command: yarn start
+  # client --> to have the client side in container
+  client:
+    build: ./client
+    environment:
+      <<: *common-variables
+      NODE_PATH: src
+    expose:
+      - 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./client/src:/app/src
+    links:
+      - server
+    command: yarn start
